@@ -6,7 +6,7 @@ TOKEN = os.getenv("BOT_TOKEN")
 
 bot = telebot.TeleBot(TOKEN)
 
-# Guarda os últimos resultados recebidos
+# Guarda os resultados durante a execução do bot
 historico = []
 
 
@@ -14,97 +14,108 @@ historico = []
 def start(message):
     bot.reply_to(
         message,
-        "🤖 Olá! O Bot Bacbo está online!\n\n"
+        "🤖 Olá! O Bot Bac Bo está online!\n\n"
         "Comandos disponíveis:\n"
-        "🎯 /sinal - gerar sinal\n"
-        "📊 /status - verificar o bot\n"
-        "➕ /resultado 1 2 3 - adicionar resultado"
-    )
-
-
-@bot.message_handler(commands=["status"])
-def status(message):
-    bot.reply_to(
-        message,
-        f"✅ Bot online!\n"
-        f"📊 Resultados armazenados: {len(historico)}"
+        "📊 /historico - ver resultados registrados\n"
+        "📈 /estatisticas - ver estatísticas\n"
+        "➕ /resultado X - registrar um resultado\n"
+        "🗑️ /limpar - apagar o histórico"
     )
 
 
 @bot.message_handler(commands=["resultado"])
-def adicionar_resultado(message):
-    try:
-        partes = message.text.split()[1:]
+def resultado(message):
+    partes = message.text.split()
 
-        if len(partes) != 3:
-            bot.reply_to(
-                message,
-                "❌ Formato incorreto.\n\n"
-                "Exemplo:\n"
-                "/resultado 4 2 5"
-            )
-            return
-
-        dados = [int(x) for x in partes]
-
-        if not all(1 <= x <= 6 for x in dados):
-            raise ValueError
-
-        historico.append(dados)
-
-        # Mantém apenas os últimos 50 resultados
-        if len(historico) > 50:
-            historico.pop(0)
-
+    if len(partes) != 2:
         bot.reply_to(
             message,
-            f"✅ Resultado registrado: {dados[0]} - {dados[1]} - {dados[2]}\n"
-            f"📊 Total armazenado: {len(historico)}"
-        )
-
-    except:
-        bot.reply_to(
-            message,
-            "❌ Resultado inválido.\n\n"
-            "Use, por exemplo:\n"
-            "/resultado 3 5 2"
-        )
-
-
-@bot.message_handler(commands=["sinal"])
-def sinal(message):
-
-    if len(historico) < 5:
-        bot.reply_to(
-            message,
-            "⚠️ Ainda não tenho dados suficientes.\n\n"
-            "Adicione pelo menos 5 resultados usando:\n"
-            "/resultado 3 5 2"
+            "Use assim:\n\n"
+            "/resultado Player\n"
+            "/resultado Banker\n"
+            "/resultado Tie"
         )
         return
 
-    # Analisa os últimos resultados
-    ultimos = historico[-10:]
+    resultado = partes[1].lower()
 
-    soma_jogador = sum(r[0] for r in ultimos)
-    soma_banqueiro = sum(r[1] for r in ultimos)
+    nomes = {
+        "player": "Player",
+        "banker": "Banker",
+        "tie": "Tie"
+    }
 
-    if soma_jogador > soma_banqueiro:
-        sinal = "🎯 JOGADOR"
-    elif soma_banqueiro > soma_jogador:
-        sinal = "🎯 BANQUEIRO"
-    else:
-        sinal = "🎯 EMPATE"
+    if resultado not in nomes:
+        bot.reply_to(
+            message,
+            "Resultado inválido.\n"
+            "Use: Player, Banker ou Tie."
+        )
+        return
+
+    historico.append(nomes[resultado])
 
     bot.reply_to(
         message,
-        "📡 SINAL BAC BO\n\n"
-        f"{sinal}\n\n"
-        f"📊 Análise dos últimos {len(ultimos)} resultados.\n"
-        "⚠️ Este sinal é apenas experimental e não garante o próximo resultado."
+        f"✅ Resultado registrado: {nomes[resultado]}\n"
+        f"Total registrado: {len(historico)}"
     )
 
 
-print("🤖 Bot Bacbo iniciado...")
+@bot.message_handler(commands=["historico"])
+def ver_historico(message):
+    if not historico:
+        bot.reply_to(message, "📭 Ainda não existem resultados registrados.")
+        return
+
+    ultimos = historico[-20:]
+
+    texto = "📊 Últimos resultados:\n\n"
+
+    for i, resultado in enumerate(ultimos, 1):
+        texto += f"{i}. {resultado}\n"
+
+    texto += f"\nTotal no histórico: {len(historico)}"
+
+    bot.reply_to(message, texto)
+
+
+@bot.message_handler(commands=["estatisticas"])
+def estatisticas(message):
+    if not historico:
+        bot.reply_to(message, "📭 Ainda não existem resultados.")
+        return
+
+    contagem = Counter(historico)
+    total = len(historico)
+
+    player = contagem["Player"]
+    banker = contagem["Banker"]
+    tie = contagem["Tie"]
+
+    texto = (
+        "📈 ESTATÍSTICAS\n\n"
+        f"Total: {total}\n\n"
+        f"🔵 Player: {player} ({player / total * 100:.1f}%)\n"
+        f"🔴 Banker: {banker} ({banker / total * 100:.1f}%)\n"
+        f"🟢 Tie: {tie} ({tie / total * 100:.1f}%)\n\n"
+        "⚠️ Estas estatísticas descrevem apenas o histórico "
+        "registrado e não garantem o próximo resultado."
+    )
+
+    bot.reply_to(message, texto)
+
+
+@bot.message_handler(commands=["limpar"])
+def limpar(message):
+    historico.clear()
+
+    bot.reply_to(
+        message,
+        "🗑️ Histórico apagado com sucesso."
+    )
+
+
+print("🤖 Bot Bac Bo iniciado...")
 
 bot.infinity_polling()
