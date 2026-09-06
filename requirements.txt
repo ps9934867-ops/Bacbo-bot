@@ -1,1 +1,5 @@
-pyTelegramBotAPI
+python-telegram-bot==22.3
+Pillow
+pytesseract
+opencv-python-headless
+numpy
